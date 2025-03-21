@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мини-игра: Посадка ракеты</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+            background-color: #000;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            z-index: 100;
+        }
+        .control-group {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="control-group">
+            <label for="thrust">Тяга:</label>
+            <input type="range" id="thrust" min="0" max="100" value="50">
+        </div>
+        <div class="control-group">
+            <label for="angle">Угол наклона:</label>
+            <input type="range" id="angle" min="-45" max="45" value="0">
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Размеры канваса
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Ракета
+        const rocket = {
+            x: canvas.width / 2,
+            y: 100,
+            width: 40,
+            height: 100,
+            velocityX: 0,
+            velocityY: 0,
+            angle: 0,
+            thrust: 0,
+            fuel: 100,
+            rotationSpeed: 0.05
+        };
+
+        let gravity = 0.5; // Гравитация
+        let friction = 0.99; // Снижение скорости при отсутствии тяги
+
+        // Управление
+        let keys = {
+            up: false,
+            down: false,
+            left: false,
+            right: false
+        };
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "w") keys.up = true;
+            if (e.key === "s") keys.down = true;
+            if (e.key === "a") keys.left = true;
+            if (e.key === "d") keys.right = true;
+        });
+
+        document.addEventListener("keyup", (e) => {
+            if (e.key === "w") keys.up = false;
+            if (e.key === "s") keys.down = false;
+            if (e.key === "a") keys.left = false;
+            if (e.key === "d") keys.right = false;
+        });
+
+        // Получение значений из ползунков
+        const thrustSlider = document.getElementById("thrust");
+        const angleSlider = document.getElementById("angle");
+
+        function updatePhysics() {
+            // Применение силы тяги
+            if (keys.up && rocket.fuel > 0) {
+                rocket.velocityY -= (rocket.thrust * Math.cos(rocket.angle * Math.PI / 180)) / 100;
+                rocket.velocityX += (rocket.thrust * Math.sin(rocket.angle * Math.PI / 180)) / 100;
+                rocket.fuel -= 0.1;
+            }
+
+            // Плавное замедление (фрикция)
+            rocket.velocityX *= friction;
+            rocket.velocityY *= friction;
+
+            // Гравитация
+            rocket.velocityY += gravity;
+
+            // Обновление позиции
+            rocket.x += rocket.velocityX;
+            rocket.y += rocket.velocityY;
+
+            // Столкновение с землей
+            if (rocket.y > canvas.height - rocket.height) {
+                if (Math.abs(rocket.velocityY) < 2 && Math.abs(rocket.velocityX) < 2) {
+                    alert("Поздравляем, ракета успешно приземлилась!");
+                    resetGame();
+                } else {
+                    alert("Не удалось посадить ракету, она разбилась!");
+                    resetGame();
+                }
+            }
+
+            // Отскок от краев экрана
+            if (rocket.x > canvas.width - rocket.width || rocket.x < 0) {
+                rocket.velocityX = -rocket.velocityX * friction;
+            }
+
+            if (rocket.y > canvas.height - rocket.height) {
+                rocket.velocityY = -rocket.velocityY * friction;
+            }
+        }
+
+        function resetGame() {
+            rocket.x = canvas.width / 2;
+            rocket.y = 100;
+            rocket.velocityX = 0;
+            rocket.velocityY = 0;
+            rocket.fuel = 100;
+        }
+
+        function drawRocket() {
+            ctx.save();
+            ctx.translate(rocket.x, rocket.y);
+            ctx.rotate(rocket.angle * Math.PI / 180);
+            ctx.fillStyle = "red";
+            ctx.fillRect(-rocket.width / 2, -rocket.height / 2, rocket.width, rocket.height);
+            ctx.restore();
+        }
+
+        function drawUI() {
+            ctx.fillStyle = "white";
+            ctx.font = "20px Arial";
+            ctx.fillText("Тяга: " + thrustSlider.value, 20, 40);
+            ctx.fillText("Угол наклона: " + angleSlider.value, 20, 70);
+            ctx.fillText("Топливо: " + rocket.fuel.toFixed(2), 20, 100);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            rocket.thrust = parseInt(thrustSlider.value);
+            rocket.angle = parseInt(angleSlider.value);
+
+            updatePhysics();
+            drawRocket();
+            drawUI();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
